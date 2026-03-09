@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  
+  //previewFeatures = ["driverAdapters"] 
+  moduleFormat    = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+  //url      = env("DATABASE_URL")
+}
+
+model User{
+
+  id Int @id @default(autoincrement())
+  email String @unique
+  name String
+  password String
+  is_admin Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //relations
+
+  items UserItems []
+
+  sessions UserSession[]
+
+
+  @@map("users")
+}
+
+model UserSession{
+
+  id Int @id @default(autoincrement())
+  hashedToken String @unique
+
+  deviceName String?
+  ipAddress String? 
+
+  createdAt DateTime @default(now())
+
+  user_id Int
+  user User @relation(fields: [user_id], references: [id], onDelete:Cascade)
+
+  @@map("user_sessions")
+
+}
+
+model Item{
+
+  id Int @id @default(autoincrement()) 
+  item_name String
+  item_quantity Int
+  item_price Decimal @db.Decimal(10,2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users UserItems[]
+
+  @@map("items")
+}
+
+model UserItems{
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id Int
+
+  item Item @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  item_id Int
+
+  @@id([user_id,item_id])
+
+  @@map("user_items")
+}
