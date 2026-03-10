@@ -2,9 +2,9 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request }
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { SessionGuard } from 'src/auth/session.guard';
+import { AuthGuard } from '@nestjs/passport';
 
-@UseGuards(SessionGuard)
+@UseGuards(AuthGuard('jwt'))
 @Controller('items')
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}

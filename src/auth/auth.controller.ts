@@ -10,9 +10,9 @@ export class AuthController {
 
     @Post('refresh')
 
-    async refresh(@Body() body: {user_id: number, refresh_token: string}, @Request() req: any){
+    async refresh(@Body() body: { refresh_token: string}, @Request() req: any){
 
-        return this.authservice.refreshTokens(body.user_id, body.refresh_token, req)
+        return this.authservice.refreshTokens(body.refresh_token, req)
     }
     
     @Post('login')
@@ -23,9 +23,15 @@ export class AuthController {
     }
 
     @Post('logout')
+    async logout(@Body() body: {refresh_token: string}){
+        
+        return this.authservice.logout(body.refresh_token)
+    }
+    
+    @Post('logout-all')
 
-    async logout(@Body() body: {user_id: number}){
+    async logoutAllDevices(@Body() body: {user_id: number}){
 
-        return this.authservice.logout(body.user_id)
+        return this.authservice.logoutAllDevices(body.user_id)
     }
 }

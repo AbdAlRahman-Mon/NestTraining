@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
+import {v4 as uuidv4} from 'uuid';
 
 @Injectable()
 export class AuthService {
@@ -12,9 +13,9 @@ export class AuthService {
         private jwtService: JwtService,
     ){}
 
-    async getTokens(user_id: number, email: string, is_admin: boolean){
+    async getTokens(user_id: number, email: string, is_admin: boolean, sessionId: string){
 
-        const payload = {user_id: user_id, email, is_admin}
+        const payload = {user_id: user_id, email, is_admin, sid: sessionId};
         
         const [at, rt] = await Promise.all([
 
@@ -57,75 +58,112 @@ export class AuthService {
 
         if(!user || !(await bcrypt.compare(password, user.password))){
 
-            throw new UnauthorizedException('User Name or passowrd Uncorrect');
+            throw new UnauthorizedException('email or passowrd Uncorrect');
         }
         
-        const tokens = await this.getTokens(user.id, user.email, user.is_admin);
+        const sesssionId = uuidv4();
+
+        const tokens = await this.getTokens(user.id, user.email, user.is_admin, sesssionId);
 
         const deviceName = req.headers['user-agent'] || 'Unknown Device';
         const ipAddress = req.ip;
 
-        const hashedToken = await bcrypt.hash(tokens.refresh_token, 14);
+        const hashedToken = await bcrypt.hash(tokens.refresh_token, 12);
 
-        const existingSession  = await this.prisma.userSession.findFirst({
-            where: {
+        // const existingSession  = await this.prisma.userSession.findFirst({
+        //     where: {
+        //         user_id: user.id,
+        //         deviceName: deviceName,
+        //         ipAddress: ipAddress,
+        //     }
+        // });
+
+        // if(existingSession){
+        //     await this.prisma.userSession.update({
+        //         where: { id: existingSession.id },
+        //         data: { hashedToken: hashedToken },
+        //     });
+        // }else{
+        //     await this.prisma.userSession.create({
+        //         data: {
+        //             hashedToken: hashedToken,
+        //             user_id: user.id,
+        //             deviceName: req.headers['user-agent'] || 'Unknown Device',
+        //             ipAddress: req.ip,
+        //         },
+        //     });
+        // }
+        await this.prisma.userSession.create({
+            data: {
+                hashedToken: hashedToken,
                 user_id: user.id,
                 deviceName: deviceName,
                 ipAddress: ipAddress,
-            }
+                sessionId: sesssionId,
+            },
         });
 
-        if(existingSession){
-            await this.prisma.userSession.update({
-                where: { id: existingSession.id },
-                data: { hashedToken: hashedToken },
-            });
-        }else{
-            await this.prisma.userSession.create({
-                data: {
-                    hashedToken: hashedToken,
-                    user_id: user.id,
-                    deviceName: req.headers['user-agent'] || 'Unknown Device',
-                    ipAddress: req.ip,
-                },
-            });
-        }
-
         
-        (req as any).session.user_id = user.id;
-        (req as any).session.accessToken = tokens.access_token;
-        (req as any).session.is_admin  = user.is_admin;
+        // (req as any).session.user_id = user.id;
+        // (req as any).session.is_admin  = user.is_admin;
 
-        return new Promise((resolve, reject) => {
-            req.session.save((err) => {
-                if(err) reject(err);
-                resolve({message: 'User Logged in successfully', ...tokens})
-            })
-        })
+        // return new Promise((resolve, reject) => {
+        //     req.session.save((err) => {
+        //         if(err) reject(err);
+        //         resolve({message: 'User Logged in successfully', ...tokens})
+        //     })
+        // })
+
+        return {
+            message: 'User Logged in successfully',
+            ...tokens
+            
+        }
         
 
     }
 
-    async refreshTokens(user_id: number, refresh_token: string, req: Request){
+    async refreshTokens( refresh_token: string, req: Request){
 
-        const decoded =  await this.jwtService.verifyAsync(refresh_token, {
+        try{const decoded =  await this.jwtService.verifyAsync(refresh_token, {
             secret: process.env.JWT_REFRESH_SECRET, 
         });
 
-        const userSessions = await this.prisma.userSession.findMany({
-            where: {user_id: decoded.user_id},
-        })
+        const sessionId = decoded.sid;
 
-        let currentSession: any | null = null; 
-        for (const session of userSessions){
-            const isMatch = await bcrypt.compare(refresh_token, session.hashedToken)
-            if(isMatch){
-                currentSession = session;
-                break;
-            }
+        const session = await this.prisma.userSession.findUnique({
+            where: {sessionId: sessionId},
+        });
+
+        if(!session){
+            throw new ForbiddenException('Invalid Refresh Token or session expired');
         }
 
-        if(!currentSession){
+        // const userSessions = await this.prisma.userSession.findMany({
+        //     where: {user_id: decoded.user_id},
+        // })
+
+        // let currentSession: any | null = null; 
+        // for (const session of userSessions){
+        //     const isMatch = await bcrypt.compare(refresh_token, session.hashedToken)
+        //     if(isMatch){
+        //         currentSession = session;
+        //         break;
+        //     }
+        // }
+
+        // if(!currentSession){
+        //     throw new ForbiddenException('Invalid Refresh Token');
+        // }
+
+
+        const isMatch = await bcrypt.compare(refresh_token, session.hashedToken);  
+
+        if(!isMatch){ 
+            await this.prisma.userSession.deleteMany({  
+                where: {user_id: decoded.user_id},
+            }); 
+
             throw new ForbiddenException('Invalid Refresh Token');
         }
 
@@ -135,37 +173,68 @@ export class AuthService {
         throw new ForbiddenException('User not found');
         }
 
-        const tokens = await this.getTokens(user.id, user.email, user.is_admin);
+        const newSesssionId = uuidv4();
+        const tokens = await this.getTokens(user.id, user.email, user.is_admin, newSesssionId);
 
-        const newHash = await bcrypt.hash(tokens.refresh_token, 14);
+
+        const newHash = await bcrypt.hash(tokens.refresh_token, 12);
         
         await this.prisma.userSession.update({
-            where: {id: currentSession.id},
-            data: {hashedToken: newHash}
+            where: {sessionId: session.sessionId},
+            data: {hashedToken: newHash, sessionId: newSesssionId},
         });
+         
 
-        (req as any).session.user_id = user.id;
-        (req as any).session.is_admin = user.is_admin;
-        (req as any).session.accessToken = tokens.access_token;
+        // (req as any).session.user_id = user.id;
+        // (req as any).session.is_admin = user.is_admin;
+        //(req as any).session.accessToken = tokens.access_token;
 
-        return new Promise((resolve, reject) => {
-            req.session.save((err) => {
-                if (err) reject(err);
-                resolve({
-                    message: 'Session refreshed successfully',
-                    ...tokens
-                });
-            });
-        });
+        // return new Promise((resolve, reject) => {
+        //     req.session.save((err) => {
+        //         if (err) reject(err);
+        //         resolve({
+        //             message: 'Session refreshed successfully',
+        //             ...tokens
+        //         });
+        //     });
+        // });
+
+        return {
+            message: 'Session refreshed successfully',
+            ...tokens
+        }
+        }   catch(e){
+            throw new ForbiddenException('Invalid Refresh Token');
+        }
     }
 
 
-    async logout(user_id: number){
+    
+    async logout(refresh_token: string) {
+        try {
+            const decoded = await this.jwtService.verifyAsync(refresh_token, {
+                secret: process.env.JWT_REFRESH_SECRET,
+            });
+            
+            // Delete only the specific session
+            await this.prisma.userSession.deleteMany({
+                where: { 
+                    sessionId: decoded.sid 
+                },
+            });
+
+            return { message: 'Logged out successfully from this device' };
+        } catch (e) {
+            // If token is invalid, we can't decode it, but we can still clear the cookie client-side
+            throw new ForbiddenException('Invalid token');
+        }
+    }
+    async logoutAllDevices(user_id: number){
         
         await this.prisma.userSession.deleteMany({
         where: { user_id: user_id },
         });
-
+    
         return {message: 'Logged out sucessfully from all devices'}
     }
 }
