@@ -70,29 +70,6 @@ export class AuthService {
 
         const hashedToken = await bcrypt.hash(tokens.refresh_token, 12);
 
-        // const existingSession  = await this.prisma.userSession.findFirst({
-        //     where: {
-        //         user_id: user.id,
-        //         deviceName: deviceName,
-        //         ipAddress: ipAddress,
-        //     }
-        // });
-
-        // if(existingSession){
-        //     await this.prisma.userSession.update({
-        //         where: { id: existingSession.id },
-        //         data: { hashedToken: hashedToken },
-        //     });
-        // }else{
-        //     await this.prisma.userSession.create({
-        //         data: {
-        //             hashedToken: hashedToken,
-        //             user_id: user.id,
-        //             deviceName: req.headers['user-agent'] || 'Unknown Device',
-        //             ipAddress: req.ip,
-        //         },
-        //     });
-        // }
         await this.prisma.userSession.create({
             data: {
                 hashedToken: hashedToken,
@@ -102,17 +79,6 @@ export class AuthService {
                 sessionId: sesssionId,
             },
         });
-
-        
-        // (req as any).session.user_id = user.id;
-        // (req as any).session.is_admin  = user.is_admin;
-
-        // return new Promise((resolve, reject) => {
-        //     req.session.save((err) => {
-        //         if(err) reject(err);
-        //         resolve({message: 'User Logged in successfully', ...tokens})
-        //     })
-        // })
 
         return {
             message: 'User Logged in successfully',
@@ -138,24 +104,6 @@ export class AuthService {
         if(!session){
             throw new ForbiddenException('Invalid Refresh Token or session expired');
         }
-
-        // const userSessions = await this.prisma.userSession.findMany({
-        //     where: {user_id: decoded.user_id},
-        // })
-
-        // let currentSession: any | null = null; 
-        // for (const session of userSessions){
-        //     const isMatch = await bcrypt.compare(refresh_token, session.hashedToken)
-        //     if(isMatch){
-        //         currentSession = session;
-        //         break;
-        //     }
-        // }
-
-        // if(!currentSession){
-        //     throw new ForbiddenException('Invalid Refresh Token');
-        // }
-
 
         const isMatch = await bcrypt.compare(refresh_token, session.hashedToken);  
 
@@ -184,20 +132,6 @@ export class AuthService {
             data: {hashedToken: newHash, sessionId: newSesssionId},
         });
          
-
-        // (req as any).session.user_id = user.id;
-        // (req as any).session.is_admin = user.is_admin;
-        //(req as any).session.accessToken = tokens.access_token;
-
-        // return new Promise((resolve, reject) => {
-        //     req.session.save((err) => {
-        //         if (err) reject(err);
-        //         resolve({
-        //             message: 'Session refreshed successfully',
-        //             ...tokens
-        //         });
-        //     });
-        // });
 
         return {
             message: 'Session refreshed successfully',
