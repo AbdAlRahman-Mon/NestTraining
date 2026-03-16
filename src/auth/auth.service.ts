@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma.service';
 import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
 import {v4 as uuidv4} from 'uuid';
+import {registerDto} from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +14,18 @@ export class AuthService {
         private jwtService: JwtService,
     ){}
 
+    async register(registerDto: registerDto){
+        const hashed_passowrd = await bcrypt.hash(registerDto.password,10);
+        await this.prisma.user.create({
+            data: {
+                ...registerDto,
+                password: hashed_passowrd
+            }
+        })
+
+        return {message: "user Register successfully."}
+    }
+    
     async getTokens(user_id: number, email: string, is_admin: boolean, sessionId: string){
 
         const payload = {user_id: user_id, email, is_admin, sid: sessionId};

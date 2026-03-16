@@ -2,12 +2,19 @@ import { Controller, Post, Body, Request, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Any } from 'typeorm';
+import { registerDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
 
     constructor(private authservice: AuthService){}
 
+    @Post('register')
+    
+    async register(@Body() registerDto: registerDto){
+        return await this.authservice.register(registerDto)
+    }
+    
     @Post('refresh')
 
     async refresh(@Body() body: { refresh_token: string}, @Request() req: any){
