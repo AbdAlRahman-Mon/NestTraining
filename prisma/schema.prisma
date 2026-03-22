@@ -16,22 +16,19 @@ datasource db {
   //url      = env("DATABASE_URL")
 }
 
-model User{
-
-  id Int @id @default(autoincrement())
-  email String @unique
-  name String
-  password String
-  is_admin Boolean @default(false)
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String
+  is_admin  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  //relations
-
-  items UserItems []
-
-  sessions UserSession[]
-
+  // relations
+  items     UserItems[]
+  sessions  UserSession[]
+  warehouse UserWarehouse[]
 
   @@map("users")
 }
@@ -65,6 +62,7 @@ model Item{
   updatedAt DateTime @updatedAt
 
   users UserItems[]
+  warehouses WarehouseItem[]
 
   @@map("items")
 }
@@ -80,5 +78,49 @@ model UserItems{
   @@id([user_id,item_id])
 
   @@map("user_items")
+}
+
+model Warehouse{
+  id Int @id @default(autoincrement())
+  warehouse_name String
+  location String
+  capacity Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items WarehouseItem []
+  
+  users UserWarehouse []
+
+  @@map("warehouses")
+}
+
+model WarehouseItem{
+  
+  warehouse Warehouse @relation(fields: [warehouse_id], references: [id], onDelete: Cascade)
+  warehouse_id Int
+
+  item Item @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  item_id Int
+
+  quantity Int
+
+  @@id([warehouse_id,item_id])
+
+  @@map("warehouse_items")
+}
+
+model UserWarehouse{
+  user_id Int
+  warehouse_id Int
+  role String
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  warehouse   Warehouse @relation(fields: [warehouse_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, warehouse_id])
+
+  @@map("user_warehouse")
+
 }
 
