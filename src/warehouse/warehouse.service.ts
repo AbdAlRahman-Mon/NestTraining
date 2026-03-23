@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreateWarehouseDto } from './dto/create-warehouse.dto';
 import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 import { PrismaService } from 'src/prisma.service';
+import { AddUsersToWarehouseDto } from './dto/add-users-to-warehouse.dto';
 
 @Injectable()
 export class WarehouseService {
@@ -17,6 +18,17 @@ export class WarehouseService {
       message: "Warehouse created successfully."
     }
 
+  }
+
+  async assignUsersToWarehouse(addUsersToWarehouseDto: AddUsersToWarehouseDto) {
+
+    await this.prisma.userWarehouse.create({
+      data: addUsersToWarehouseDto,
+    })
+
+    return {
+      message: "User assigned to warehouse successfully."
+    }
   }
 
   findAll() {

@@ -7,6 +7,7 @@ import { ItemsModule } from './items/items.module';
 import { AuthModule } from './auth/auth.module';
 import { WarehouseModule } from './warehouse/warehouse.module';
 import { PrismaModule } from './prisma.module';
+import { WarehouseItemModule } from './warehouse-item/warehouse-item.module';
 
 @Module({
   imports: [ TypeOrmModule.forRoot({
@@ -18,7 +19,7 @@ import { PrismaModule } from './prisma.module';
       database: 'nest_training',
       entities: [__dirname + '/**/*.entity{.ts,.js}'], // Automatically find all entity files
       synchronize: true, // <--- MAGIC SETTING: Automatically creates tables on startup!
-    }),UsersModule, ItemsModule, AuthModule, WarehouseModule,PrismaModule,],
+    }),UsersModule, ItemsModule, AuthModule, WarehouseModule,PrismaModule, WarehouseItemModule,],
   controllers: [AppController],
   providers: [AppService],
 })

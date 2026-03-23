@@ -5,6 +5,7 @@ import { UpdateWarehouseDto } from './dto/update-warehouse.dto';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { AuthGuard } from '@nestjs/passport';
+import { AddUsersToWarehouseDto } from './dto/add-users-to-warehouse.dto';
 
 
 @UseGuards(AuthGuard('jwt'), RolesGuard) 
@@ -16,6 +17,12 @@ export class WarehouseController {
   @Post()
   create(@Body() createWarehouseDto: CreateWarehouseDto) {
     return this.warehouseService.create(createWarehouseDto);
+  }
+
+  @Roles('admin')
+  @Post('assign-user')
+  assignUsersToWarehouse(@Body() addUsersToWarehouseDto: AddUsersToWarehouseDto) {
+    return this.warehouseService.assignUsersToWarehouse(addUsersToWarehouseDto);
   }
 
   @Get()
