@@ -3,12 +3,16 @@ import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { Roles } from 'src/auth/roles.decorator';
 
-@UseGuards(AuthGuard('jwt'))
+
 @Controller('items')
+@UseGuards(AuthGuard('jwt'), RolesGuard)
+@Roles('admin')
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
-
+  
   @Post()
   create(@Body() createItemDto: CreateItemDto, @Request() req: any) {
     const user_id = req.user.user_id;

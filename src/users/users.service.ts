@@ -72,7 +72,6 @@ export class UsersService {
               select:{
                 item_name:true,
                 item_price:true,
-                item_quantity: true,
               }
             }
           }

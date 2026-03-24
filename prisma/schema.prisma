@@ -56,7 +56,6 @@ model Item{
 
   id Int @id @default(autoincrement()) 
   item_name String
-  item_quantity Int
   item_price Decimal @db.Decimal(10,2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

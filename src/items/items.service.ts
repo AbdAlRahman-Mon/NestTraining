@@ -35,7 +35,6 @@ export class ItemsService {
       select: {
         id:true,
         item_name: true,
-        item_quantity: true,
         item_price: true,
       }
     })

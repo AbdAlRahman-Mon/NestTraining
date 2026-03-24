@@ -11,10 +11,7 @@ export class CreateItemDto {
     @Min(0, {message:"The pricee cannot be less than zero"})
     item_price
 
-    @IsNumber()
-    @IsNotEmpty()
-    @Min(0, {message:"The quantity cannot be less than zero"})
-    item_quantity
+
 
 
 }
