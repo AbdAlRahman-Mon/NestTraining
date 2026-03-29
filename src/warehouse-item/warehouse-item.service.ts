@@ -1,6 +1,7 @@
 import { Injectable,BadRequestException,NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { WarehouseItemTransactionDto } from './dto/warehouse-item-transaction.dto';
+import { BulkWarehouseInputDto } from './dto/bulk-warehouse-input.dto';
 
 @Injectable()
 export class WarehouseItemService {
@@ -24,7 +25,7 @@ export class WarehouseItemService {
             })
 
             if(!item){
-                return new NotFoundException('Item not found');
+                throw new NotFoundException('Item not found');
             }
 
             const currentTotal = await tx.warehouseItem.aggregate({
@@ -117,4 +118,84 @@ export class WarehouseItemService {
             }
         })
     }
+
+    async bulkInput(dto: BulkWarehouseInputDto) {
+
+        return this.prisma.$transaction(async (tx) => {
+
+            const warehouse = await tx.warehouse.findUnique({
+                where: {id: dto.warehouse_id}
+            })
+            
+            if(!warehouse){
+                throw new NotFoundException('Warehouse not found');
+            }
+
+            const currentTotal = await tx.warehouseItem.aggregate({
+                where: {warehouse_id: dto.warehouse_id},
+                _sum: {quantity: true},
+            });
+
+            const currentQuantity = currentTotal._sum.quantity ?? 0;
+
+            const requestedTotal = dto.items.reduce((sum, i) => sum + i.quantity, 0);
+
+            if(currentQuantity + requestedTotal > warehouse.capacity){
+                const available = warehouse.capacity - currentQuantity;
+                throw new BadRequestException(
+                    `Capacity exceeded. Available: ${available}, Requested: ${requestedTotal}.`
+                ); 
+            }
+                
+            const itemIds = dto.items.map(i => i.item_id);
+
+            const foundItems = await tx.item.findMany({
+                where: {id: {in: itemIds}},
+                select: {id: true, item_name: true},
+            });
+
+            if(foundItems.length !== itemIds.length){
+                const foundIds = foundItems.map(i => i.id);
+                const missingIds = itemIds.filter(id => !foundIds.includes(id));
+                throw new NotFoundException(
+                    `Items not found: ${missingIds.join(', ')}`
+                );
+            }
+
+            for(const entry of dto.items){
+                await tx.warehouseItem.upsert({
+                    where: {
+                        warehouse_id_item_id:{
+                            warehouse_id: dto.warehouse_id,
+                            item_id: entry.item_id,
+                        },
+                    },
+                    update: {
+                        quantity: {increment: entry.quantity},
+                    },
+                    create: {
+                        warehouse_id: dto.warehouse_id,
+                        item_id: entry.item_id,
+                        quantity: entry.quantity,
+                    }
+                });
+            }
+
+            const itemMap = new Map(foundItems.map((i) => [i.id, i.item_name]));
+
+            return {
+                message: `Successfully added ${dto.items.length} item(s) to warehouse #${dto.warehouse_id}.`,
+                remaining_space: warehouse.capacity - currentQuantity - requestedTotal,
+                items_added: dto.items.map((entry) => ({
+                    item_id: entry.item_id,
+                    item_name: itemMap.get(entry.item_id),
+                    quantity_added: entry.quantity,
+                })),
+            };
+
+
+        } 
+     )}
 }
+
+

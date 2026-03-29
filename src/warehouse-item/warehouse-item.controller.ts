@@ -4,6 +4,7 @@ import { WarehouseItemTransactionDto } from './dto/warehouse-item-transaction.dt
 import { AuthGuard } from '@nestjs/passport';
 import { WarehouseRolesGuard } from 'src/common/guards/warehouse-roles.guard';
 import { WarehouseRoles } from 'src/common/decorators/warehouse-roles.decorator';
+import { BulkWarehouseInputDto } from './dto/bulk-warehouse-input.dto';
 
 @Controller('warehouse-items')
 @UseGuards(AuthGuard('jwt'))
@@ -26,5 +27,14 @@ export class WarehouseItemController {
         @Body() dto: WarehouseItemTransactionDto
     ){
         return this.warehouseItemService.outputItem(dto);
+    }
+
+    @Post('bulk-input')
+    @WarehouseRoles('MANAGER')
+    @UseGuards(WarehouseRolesGuard)
+    bulkInput(
+        @Body() dto: BulkWarehouseInputDto
+    ){
+        return this.warehouseItemService.bulkInput(dto);
     }
 }   
