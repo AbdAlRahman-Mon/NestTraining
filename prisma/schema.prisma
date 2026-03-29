@@ -116,10 +116,34 @@ model UserWarehouse{
 
   user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   warehouse   Warehouse @relation(fields: [warehouse_id], references: [id], onDelete: Cascade)
+  permissions UserWarehousePermission[]
 
   @@id([user_id, warehouse_id])
 
   @@map("user_warehouse")
 
+}
+
+model Permission {
+  id          Int    @id @default(autoincrement())
+  name        String @unique  // e.g. 'ITEM_INPUT', 'ITEM_OUTPUT', 'ITEM_READ'
+  description String?
+
+  userWarehousePermissions UserWarehousePermission[]
+
+  @@map("permissions")
+}
+
+model UserWarehousePermission {
+  user_id       Int
+  warehouse_id  Int
+  permission_id Int
+
+  // navigate back to the assignment and to the permission
+  userWarehouse UserWarehouse @relation(fields: [user_id, warehouse_id], references: [user_id, warehouse_id], onDelete: Cascade)
+  permission    Permission    @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, warehouse_id, permission_id])
+  @@map("user_warehouse_permissions")
 }
 
